@@ -1,0 +1,227 @@
+#!/bin/bash
+#
+# Copyright (C) 2005 Avuton Olrich <avuton@gmail.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+#
+#####################################################################
+
+
+checksum='sha1sum'
+dir=`echo $@ | sed -e s/.*\ //`
+tmp_file='/tmp/dupmanager_temp_file~'
+report_file='/tmp/dupmanager_report'
+version='1.0'
+
+one_behind_file=''
+one_behind_sum=''
+statusbar_inc=''
+
+statusbar ()
+{
+    if test $(( $1 % $2 )) == 0
+	then
+	echo -n '.'
+    fi
+}
+
+createNewReport ()
+{
+    if test -f $report_file && test -w $report_file
+	then
+	rm -f $report_file
+    fi
+    touch $report_file
+}
+
+check_dir_readable ()
+{
+    if test ! -d $1
+	then
+	echo "Error: $1 directory is not readable."
+	exit 1
+    fi
+}
+
+check_file_readable ()
+{
+    if test ! -e $1
+	then
+	echo "Error: $1 was not able to be created, you don't have access to write to it."
+	exit 1
+    fi
+}
+
+getTime ()
+{
+    printf "\tDupmanager $1 at %s %s\n">>$report_file `date +%T` `date +%D`
+}
+
+check_writeable ()
+{
+    if test ! -n $1
+	then
+	touch $1
+    else
+	rm -f $1
+	touch $1
+    fi
+
+    if test ! -w $1
+	then
+	echo "Error: $1 was created but is not writable."
+	exit 1
+    fi
+}
+
+search ()
+{
+    printf "[Search]: Finding all files, generating hashes with %s\nplease wait...\n" $checksum
+    check_dir_readable $dir
+    check_writeable $tmp_file
+
+    find $dir -type f $larger_than $xdev $only_current_directory -exec $checksum {} \; | sort > $tmp_file
+}
+
+report ()
+{
+    printf "[Report]: Parsing the file, creating the report...\nplease wait..."
+
+    statusbar_inc=0
+    inc=0
+    dup_inc=0
+
+    check_file_readable $tmp_file
+    check_writeable $report_file
+
+    # $tmp_file is called at the bottom (at 'done')
+    while read -r current_sum current_file;
+      do
+
+      # This is where we check for hard links
+      if [ "$one_behind_file" -ef "$current_file" ] &&
+	  [ "$show_hard_links" != 1 ]
+	  then
+	  continue
+      fi
+
+      if test "$current_sum" == "$one_behind_sum"
+	  then
+	  
+	  # All the increments
+	  statusbar_inc=$(( $statusbar_inc + 1 ))
+	  inc=$(( $inc + 1 ))
+
+	  statusbar $statusbar_inc 100
+
+	  # If the first file, put the header stuff
+	  if test $inc == 1
+	      then
+	      printf "Duplicate #%i\n">>$report_file $dup_inc
+	      printf "file: %s\n">>$report_file $one_behind_file
+	  fi
+
+	  if [ "$one_behind_file" -ef "$current_file" ] &&
+	      [ "$show_hard_links" == 1 ]
+	      then
+	      printf "hard link: %s\n">>$report_file $current_file
+	  else
+	      printf "file: %s\n">>$report_file $current_file
+	  fi
+	  
+      else
+	  
+	  if test $inc -ne 0
+	      then
+	      statusbar $statusbar_inc 100
+	      dup_inc=$(( $dup_inc + 1 ))
+	      inc=0
+	      printf "Checksums:\t%s">>$report_file $one_behind_sum
+	      printf "\n\n">>$report_file
+	  fi
+
+      fi
+
+      one_behind_file=$current_file
+      one_behind_sum=$current_sum
+      statusbar_inc="$statusbar_inc"
+
+ 
+    done < $tmp_file
+
+    echo ''
+}
+
+usage ()
+{
+    printf "Usage: dupmanager [options] DIRECTORY...\n\n"
+
+    printf " options:\n"
+    printf " -c\t\tOnly find duplicates in the current directory\n"
+    printf " -h\t\tDisplay this help message\n"
+    printf " -H\t\tShow hard links, not on by default\n"
+    printf " -l [<num>]\tOnly show the duplicates for files larger than <num> in kilobytes\n"
+    printf " -m\t\tUse md5sum rather than sha1sum which is default\n"
+    printf " -r <file>\tThe report file to output to (default %s)\n" $report_file
+    printf " -t <file>\tThe temporary file (defaults %s)\n" $tmp_file
+    printf " -x\t\tDon't decend on other filesystems\n"
+
+    printf "\n"
+    printf " for developers:\n"
+    printf " -R\t\tWrite report from previously made temporary file\n"
+    printf " -S\t\tSearch & write temporary file only, for later processing\n"
+
+    printf "\n"
+}
+
+# Meat & Potatoes
+# If the directory wasn't typed
+if test ! $dir
+    then
+    usage
+    exit 1
+fi
+
+while getopts "l:r:t:123SRsmchHv" opt
+  do
+  case $opt in
+      S ) search
+	  exit 0 ;;
+      R ) createNewReport
+	  report
+	  exit 0 ;;
+      h ) usage
+	  exit 0 ;;
+      c ) only_current_directory=' -maxdepth 1 ' ;;
+      H ) show_hard_links='1' ;;
+      l ) larger_than='-size '$OPTARG'k' ;;
+      m ) checksum='md5sum' ;;
+      r ) report_file="$OPTARG" ;;
+      t ) tmp_file="$OPTARG" ;;
+      x ) xdev=' -xdev ' ;;
+      v ) printf "Dupmanager version: %s\n" $version
+	  exit 0;;
+      * ) usage
+	  exit 1;;
+  esac
+  shift 10
+done
+
+createNewReport
+getTime started
+search
+report
+getTime ended

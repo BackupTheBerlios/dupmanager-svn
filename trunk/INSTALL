@@ -1,0 +1,15 @@
+			Dupmanager - INSTALL
+
+ Requirements:
+
+ * GNU coreutils 
+ * GNU sed
+ * GNU bash
+ * GNU findutils
+
+ Install:
+
+ Simply copy it to a bin/ directory, chmod +x and use it.
+
+ Run:
+ './dupmanager -h' to get more options

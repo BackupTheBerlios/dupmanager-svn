@@ -1,0 +1,36 @@
+
+				  Dupmanager
+		http://developer.berlios.de/projects/dupmanager/
+
+Dupmanager was made out of desperation, having tried a few different duplicate file
+finders and them not doing exactly what I want it to do without having to write more
+buggy C code. So, this is written in shell, which is extremely easy to shape and mold
+into what you want it to do. This is a community effort, as such I won't be fixing bugs
+unless they bother me, and if I add features it's scratching my own itch. I'm more than
+willing to take bug fixes, or add features from others, but I will need a patch. You 
+can send an email to me (see AUTHORS).
+
+Adding components to this is extremely simple. It's written in bash and only uses
+coreutils if possible, with as few as possible regex's.
+
+So far, as of 1.0 all it does is get information and make a report. It could easily
+do a few very useful things including, but not limited to:
+	* Script to delete certain files
+	* Report how much space could be gained by removing duplicated
+	* Interactive mode
+	* and much more...
+
+Before it does something like that it should be a little more abstract, perhaps
+putting all values into a few arrays and parse and add as necessary.
+
+Developers: If you're going to add a patch, please make a function to do your work,
+keep it nice and simple. If you're going to add a new component that does something 
+specific please add it as a getopts(). Also if you're going to add something 
+that has a chance of being dangerous to the user, make it difficult for the user to
+screw up. Finally, if adding to it, it must act like any normal GNU style C 
+application.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+For the full license, see COPYING.
