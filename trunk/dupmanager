@@ -44,7 +44,13 @@ createNewReport ()
 	then
 	rm -f $report_file
     fi
-    touch $report_file
+    if test -d $report_file
+	then
+	echo "Report file is a directory";
+	exit 1
+    else
+	touch $report_file
+    fi
 }
 
 check_dir_readable ()
@@ -130,16 +136,16 @@ report ()
 	  # If the first file, put the header stuff
 	  if test $inc == 1
 	      then
-	      printf "Duplicate #%i\n">>$report_file $dup_inc
-	      printf "file: %s\n">>$report_file $one_behind_file
+	      printf "Duplicate #%i\n">>$report_file "$dup_inc"
+	      printf "file: %s\n">>$report_file "$one_behind_file"
 	  fi
 
 	  if [ "$one_behind_file" -ef "$current_file" ] &&
 	      [ "$show_hard_links" == 1 ]
 	      then
-	      printf "hard link: %s\n">>$report_file $current_file
+	      printf "hard link: %s\n">>$report_file "$current_file"
 	  else
-	      printf "file: %s\n">>$report_file $current_file
+	      printf "file: %s\n">>$report_file "$current_file"
 	  fi
 	  
       else
